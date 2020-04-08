@@ -37,6 +37,7 @@ def after_request(response):
     response.headers["Pragma"] = "no-cache"
     return response
 
+
 # Configure session to use filesystem (instead of signed cookies)
 app.config["SESSION_FILE_DIR"] = mkdtemp()
 app.config["SESSION_PERMANENT"] = False
@@ -47,6 +48,7 @@ Session(app)
 db = SQL(os.environ['DATABASE_URL'])
 # Create database schema
 create_db_tables()
+
 
 @app.route("/", methods=["GET", "POST"])
 @login_required
@@ -91,7 +93,8 @@ def index():
         # user reached route via get (as by clicking a link or via redirect)
         return redirect("/edit_order?order_uuid=" + uuid)
 
-    order_list = db.execute("SELECT id, number, uuid, date, type, status, IFNULL((SELECT SUM(qty * price) FROM order_items WHERE order_id = order_list.id), 0) AS amount FROM order_list")
+    order_list = db.execute("SELECT id, number, uuid, date, type, status, IFNULL((SELECT SUM(qty * price) "
+                           + "FROM order_items WHERE order_id = order_list.id), 0) AS amount FROM order_list")
 
     if not order_list:
         order_list = None
@@ -121,13 +124,13 @@ def edit_order():
                        order_id=order['id'], product_id=product_id, qty=qty, price=price)
 
     # Query database for sender and reciever name and address
-    if order['type'] == 1: # Sell order: WH -> Customer
+    if order['type'] == 1:  # Sell order: WH -> Customer
         sender = db.execute("SELECT name, address FROM warehouses WHERE id = :from_id", from_id=order['from_id'])[0]
         reciever = db.execute("SELECT name, address  FROM customers WHERE id = :to_id", to_id=order['to_id'])[0]
-    if order['type'] == 2: # Buy order: Supplier -> WH, products are being added to WH stock
+    if order['type'] == 2:  # Buy order: Supplier -> WH, products are being added to WH stock
         sender = db.execute("SELECT name, address FROM suppliers WHERE id = :from_id", from_id=order['from_id'])[0]
         reciever = db.execute("SELECT name, address FROM warehouses WHERE id = :to_id", to_id=order['to_id'])[0]
-    if order['type'] == 3: # Move order: WH -> WH
+    if order['type'] == 3:  # Move order: WH -> WH
         sender = db.execute("SELECT name, address FROM warehouses WHERE id = :from_id", from_id=order['from_id'])[0]
         reciever = db.execute("SELECT name, address FROM warehouses WHERE id = :to_id", to_id=order['to_id'])[0]
 
@@ -221,7 +224,7 @@ def fetchunit():
     """AJAX functionality which returns product unit"""
 
     # fetch id (price is not needed)
-    product_id,price=request.args.get("id").split(";")
+    product_id, price = request.args.get("id").split(";")
 
     # query database for warehouses, suppliers, customers
     unit = db.execute("SELECT unit FROM products WHERE id = :product_id", product_id=int(product_id))[0]['unit']
@@ -276,51 +279,53 @@ def edit_inventory():
 
     # Fetch inventory data
     inventory = db.execute("SELECT id, uuid, date, status, warehouse_id FROM inventory_list WHERE uuid = :inventory_uuid",
-                       inventory_uuid=request.args.get("inventory_uuid"))[0]
+                           inventory_uuid=request.args.get("inventory_uuid"))[0]
 
     # User reached route via POST by submitting "add new" form
     if request.method == "POST":
 
         if not db.execute("SELECT inventory_items.id FROM inventory_items "
-                        + "LEFT JOIN inventory_list ON inventory_items.inventory_id = inventory_list.id "
-                        + "WHERE product_id = :product_id AND inventory_id = :inventory_id", product_id=request.form.get("new_inventory_item"), inventory_id=inventory['id']):
+                          + "LEFT JOIN inventory_list ON inventory_items.inventory_id = inventory_list.id "
+                          + "WHERE product_id = :product_id AND inventory_id = :inventory_id",
+                          product_id=request.form.get("new_inventory_item"), inventory_id=inventory['id']):
             # Insert new item into DB
             db.execute("INSERT INTO inventory_items (inventory_id, product_id) "
-                     + "VALUES (:inventory_id, :product_id)",
+                       + "VALUES (:inventory_id, :product_id)",
                        inventory_id=inventory['id'], product_id=request.form.get("new_inventory_item"))
 
     # Fetch product list
     products = db.execute("SELECT products.id, name FROM products LEFT JOIN inventory_items ON products.id = inventory_items.product_id "
-                        + "WHERE products.status = 1 AND products.id NOT IN (SELECT product_id FROM inventory_items WHERE inventory_id = :inventory_id)",
+                          + "WHERE products.status = 1 AND products.id NOT IN (SELECT product_id FROM inventory_items WHERE inventory_id = :inventory_id)",
                           inventory_id=inventory['id'])
 
     # Fetch warehouse name
-    warehouse = db.execute("SELECT name FROM warehouses WHERE id = :warehouse_id", warehouse_id=inventory['warehouse_id'])[0]['name']
+    warehouse = db.execute("SELECT name FROM warehouses WHERE id = :warehouse_id",
+                           warehouse_id=inventory['warehouse_id'])[0]['name']
 
     # Fetch order items
     inventory_items = db.execute("SELECT Z.product_id, ii.id AS inv_id, name, description, IFNULL(SUM(Z.qty),0) AS qty, IFNULL(ii.qty,0) AS inv_qty FROM ("
-                                +"SELECT product_id, SUM(qty) AS qty FROM inventory_items LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
-                                +"WHERE status = 1 AND warehouse_id = :warehouse_id GROUP BY product_id "
-                                +"UNION "
-                                +"SELECT product_id, SUM(qty) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
-                                +"WHERE status = 1 AND type = 2 AND to_id = :warehouse_id GROUP BY product_id "
-                                +"UNION "
-                                +"SELECT product_id, -(SUM(qty)) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
-                                +"WHERE status = 1 AND type = 1 AND from_id = :warehouse_id GROUP BY product_id "
-                                +"UNION "
-                                +"SELECT product_id, SUM(qty) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
-                                +"WHERE status = 1 AND type = 3 AND to_id = :warehouse_id GROUP BY product_id "
-                                +"UNION "
-                                +"SELECT product_id, -(SUM(qty)) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
-                                +"WHERE status = 1 AND type = 3 AND from_id = :warehouse_id GROUP BY product_id"
-                                +"UNION "
-                                +"SELECT product_id, SUM(qty) AS qty FROM inventory_items LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
-                                +"WHERE inventory_id = inventory_id GROUP BY product_id) AS Z "
-                                +"LEFT JOIN products ON products.id = Z.product_id "
-                                +"LEFT JOIN inventory_items AS ii ON ii.product_id = Z.product_id "
-                                +"WHERE ii.inventory_id = :inventory_id "
-                                +"GROUP BY Z.product_id",
-                                  inventory_id = inventory['id'], warehouse_id = inventory['warehouse_id'])
+                                 + "SELECT product_id, SUM(qty) AS qty FROM inventory_items LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
+                                 + "WHERE status = 1 AND warehouse_id = :warehouse_id GROUP BY product_id "
+                                 + "UNION "
+                                 + "SELECT product_id, SUM(qty) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
+                                 + "WHERE status = 1 AND type = 2 AND to_id = :warehouse_id GROUP BY product_id "
+                                 + "UNION "
+                                 + "SELECT product_id, -(SUM(qty)) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
+                                 + "WHERE status = 1 AND type = 1 AND from_id = :warehouse_id GROUP BY product_id "
+                                 + "UNION "
+                                 + "SELECT product_id, SUM(qty) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
+                                 + "WHERE status = 1 AND type = 3 AND to_id = :warehouse_id GROUP BY product_id "
+                                 + "UNION "
+                                 + "SELECT product_id, -(SUM(qty)) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
+                                 + "WHERE status = 1 AND type = 3 AND from_id = :warehouse_id GROUP BY product_id"
+                                 + "UNION "
+                                 + "SELECT product_id, SUM(qty) AS qty FROM inventory_items LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
+                                 + "WHERE inventory_id = inventory_id GROUP BY product_id) AS Z "
+                                 + "LEFT JOIN products ON products.id = Z.product_id "
+                                 + "LEFT JOIN inventory_items AS ii ON ii.product_id = Z.product_id "
+                                 + "WHERE ii.inventory_id = :inventory_id "
+                                 + "GROUP BY Z.product_id",
+                                 inventory_id=inventory['id'], warehouse_id=inventory['warehouse_id'])
 
     return render_template("edit_inventory.html", inventory=inventory, products=products, inventory_items=inventory_items, warehouse=warehouse)
 
@@ -484,7 +489,7 @@ def products():
             return apology("must provide price", 403)
 
         # Ensure price is a number
-        if not str(request.form.get("price")).replace('.','').replace(',','').isnumeric():
+        if not str(request.form.get("price")).replace('.', '').replace(',', '').isnumeric():
             return apology("price must be a number", 403)
 
         # Ensure unit was submitted
@@ -492,9 +497,11 @@ def products():
             return apology("must provide unit", 403)
 
         # Insert new warehouse to DB
-        db.execute("INSERT INTO products (name, price, barcode, description, unit, status) VALUES (:name, :price, :barcode, :description, :unit, :status)",
-                   name=request.form.get("product_name"), price=request.form.get("price"), unit=request.form.get("unit"),
-                   barcode=request.form.get("barcode"), description=request.form.get("description"), status=request.form.get("status"))
+        db.execute("INSERT INTO products (name, price, barcode, description, unit, status) "
+                   + "VALUES (:name, :price, :barcode, :description, :unit, :status)",
+                   name=request.form.get("product_name"), price=request.form.get("price"),
+                   unit=request.form.get("unit"), barcode=request.form.get("barcode"),
+                   description=request.form.get("description"), status=request.form.get("status"))
 
         # User reached route via GET (as by clicking a link or via redirect)
         return redirect("/products")
@@ -517,7 +524,7 @@ def edit_product():
         return apology("must provide price", 403)
 
     # Ensure price is a number
-    if not str(request.form.get("price")).replace('.','').replace(',','').isnumeric():
+    if not str(request.form.get("price")).replace('.', '').replace(',', '').isnumeric():
         return apology("price must be a number", 403)
 
     db.execute("UPDATE products SET price=:price, status=:status WHERE id=:product_id",
@@ -576,33 +583,34 @@ def current_stock_report():
     """ Shows current stock report product """
 
     # Fetch current product stock grouped by warehouses and products
-    current_stock = db.execute("SELECT Z.product_id AS p_id, w.name AS w_name, w.address AS w_addr, p.name AS p_name, p.description AS p_desc, IFNULL(SUM(Z.qty),0) AS qty FROM ("
-                              # add all item quantities from inventories
-                              +"SELECT product_id, warehouse_id, SUM(qty) AS qty FROM inventory_items "
-                              +"LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
-                              +"WHERE status = 1 GROUP BY product_id,warehouse_id "
-                              +"UNION "
-                              # add all item quantities from BUY orders
-                              +"SELECT product_id, to_id AS warehouse_id, SUM(qty) AS qty FROM order_items "
-                              +"LEFT JOIN order_list ON order_id = order_list.id "
-                              +"WHERE status = 1 AND type = 2 GROUP BY product_id,warehouse_id "
-                              +"UNION "
-                              # substract all items quantities from SELL orders
-                              +"SELECT product_id, from_id AS warehouse_id, -(SUM(qty)) AS qty FROM order_items "
-                              +"LEFT JOIN order_list ON order_id = order_list.id "
-                              +"WHERE status = 1 AND type = 1 GROUP BY product_id,warehouse_id "
-                              +"UNION "
-                              # add all item quantities from MOVE orders
-                              +"SELECT product_id, to_id AS warehouse_id, SUM(qty) AS qty FROM order_items "
-                              +"LEFT JOIN order_list ON order_id = order_list.id "
-                              +"WHERE status = 1 AND type = 3 GROUP BY product_id,warehouse_id "
-                              +"UNION "
-                              # substract all item quantities from MOVE orders
-                              +"SELECT product_id, from_id AS warehouse_id, -(SUM(qty)) AS qty FROM order_items "
-                              +"LEFT JOIN order_list ON order_id = order_list.id "
-                              +"WHERE status = 1 AND type = 3 GROUP BY product_id,warehouse_id) AS Z "
-                              +"LEFT JOIN products AS p ON p.id = Z.product_id "
-                              +"LEFT JOIN warehouses AS w on warehouse_id = w.id GROUP BY warehouse_id, Z.product_id")
+    current_stock = db.execute("SELECT Z.product_id AS p_id, w.name AS w_name, w.address AS w_addr, "
+                               + "p.name AS p_name, p.description AS p_desc, IFNULL(SUM(Z.qty),0) AS qty FROM ("
+                               # add all item quantities from inventories
+                               + "SELECT product_id, warehouse_id, SUM(qty) AS qty FROM inventory_items "
+                               + "LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
+                               + "WHERE status = 1 GROUP BY product_id,warehouse_id "
+                               + "UNION "
+                               # add all item quantities from BUY orders
+                               + "SELECT product_id, to_id AS warehouse_id, SUM(qty) AS qty FROM order_items "
+                               + "LEFT JOIN order_list ON order_id = order_list.id "
+                               + "WHERE status = 1 AND type = 2 GROUP BY product_id,warehouse_id "
+                               + "UNION "
+                               # substract all items quantities from SELL orders
+                               + "SELECT product_id, from_id AS warehouse_id, -(SUM(qty)) AS qty FROM order_items "
+                               + "LEFT JOIN order_list ON order_id = order_list.id "
+                               + "WHERE status = 1 AND type = 1 GROUP BY product_id,warehouse_id "
+                               + "UNION "
+                               # add all item quantities from MOVE orders
+                               + "SELECT product_id, to_id AS warehouse_id, SUM(qty) AS qty FROM order_items "
+                               + "LEFT JOIN order_list ON order_id = order_list.id "
+                               + "WHERE status = 1 AND type = 3 GROUP BY product_id,warehouse_id "
+                               + "UNION "
+                               # substract all item quantities from MOVE orders
+                               + "SELECT product_id, from_id AS warehouse_id, -(SUM(qty)) AS qty FROM order_items "
+                               + "LEFT JOIN order_list ON order_id = order_list.id "
+                               + "WHERE status = 1 AND type = 3 GROUP BY product_id,warehouse_id) AS Z "
+                               + "LEFT JOIN products AS p ON p.id = Z.product_id "
+                               + "LEFT JOIN warehouses AS w on warehouse_id = w.id GROUP BY warehouse_id, Z.product_id")
 
     # User reached route via GET by clicking the link
     return render_template("current_stock_report.html", current_stock=current_stock)
