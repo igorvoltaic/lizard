@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Log In
+{% endblock %}
+
+{% block login %}
+    <form action="/register" method="post" class="form-signin">
+        <img class="mb-4" src="/static/lizard.png" alt="" width="72" height="72">
+        <h1 class="h3 mb-3 font-weight-normal">Please register new account</h1>
+        <label for="inputEmail" class="sr-only">Username</label>
+        <input type="text" id="inputUsernameRegister" class="form-control" name="username" placeholder="Username" required autofocus>
+        <label for="inputPassword" class="sr-only">Password</label>
+        <input type="password" id="inputPasswordRegister" class="form-control" name="password" placeholder="Password" required>
+        <label for="inputConfirmation" class="sr-only">Confirmation</label>
+        <input type="password" id="inputConfirmation" class="form-control" name="confirmation" placeholder="Confirmation" required>
+        <button class="btn btn-lg btn-primary btn-block" type="submit">Register</button>
+        <p class="mt-5 mb-3 text-muted">Already have an account? Please <a href="/login">log in</a>.</p>
+    </form>
+{% endblock %}

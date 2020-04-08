@@ -1,0 +1,66 @@
+{% block navbar %}
+    <div class="sidebar-sticky">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link" href="/">
+                    <span data-feather="file"></span>
+                    Orders <span class="sr-only">(current)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/inventorize">
+                    <span data-feather="check-square"></span>
+                    Inventorize 
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/customers">
+                    <span data-feather="users"></span>
+                    Customers
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/suppliers">
+                    <span data-feather="zap"></span>
+                    Suppliers
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/products">
+                    <span data-feather="shopping-cart"></span>
+                    Products
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/warehouses">
+                    <span data-feather="layers"></span>
+                    Warehouses
+                </a>
+            </li>
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+            <span>Sales reports</span>
+            <a class="d-flex align-items-center text-muted" href="#reportPeriods" data-toggle="collapse" aria-label="Add a new report">
+                <span data-feather="plus-circle"></span>
+            </a>
+        </h6>
+        <div class="collapse mb-2" id="reportPeriods">
+            <ul class="nav flex-column mb-2">
+                <li class="nav-item">
+                    <a class="nav-link" href="/current_stock_report">
+                        <span data-feather="file-text"></span>
+                        Current stock report
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">
+                        <span data-feather="file-text"></span>
+                        ...
+                    </a>
+                </li>
+                <!-- more reports to be added -->
+            </ul>
+        </div>
+    </div>
+{% endblock %}

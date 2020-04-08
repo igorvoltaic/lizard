@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Apology
+{% endblock %}
+
+{% if session.user_id %}
+    {% block main %}
+        <img alt="{{ top }}" class="mt-6 mx-auto d-block" height="450px" src="http://memegen.link/custom/{{ top | urlencode }}/{{ bottom | urlencode }}.jpg?alt=https://i.imgur.com/CsCgN7Ll.png" title="{{ top }}">
+    {% endblock %}
+{% endif %}
+
+{% block login %}
+    <img alt="{{ top }}" class="border mx-auto" height="450px" src="http://memegen.link/custom/{{ top | urlencode }}/{{ bottom | urlencode }}.jpg?alt=https://i.imgur.com/CsCgN7Ll.png" title="{{ top }}">
+{% endblock %}
