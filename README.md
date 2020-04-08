@@ -4,7 +4,7 @@ This is an Inventory Management Application.
 It was used as a Final Project for CS50's Introduction to Computer Science
 
 
-**Functionality**
+### Functionality
 
 1. Create dictionaries of products,warehouses,suppliers and customets with their own properties
 
@@ -18,7 +18,7 @@ It was used as a Final Project for CS50's Introduction to Computer Science
 
 1. Create a report of current products stock grouped by warehouses 
 
-**TODO**
+### TODO
 
 1. Right now every user can see all the orders, inventories etc. Need to decide what should be kept to individual user.
 
