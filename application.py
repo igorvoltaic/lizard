@@ -94,7 +94,7 @@ def index():
         return redirect("/edit_order?order_uuid=" + uuid)
 
     order_list = db.execute("SELECT id, number, uuid, date, type, status, IFNULL((SELECT SUM(qty * price) "
-                           + "FROM order_items WHERE order_id = order_list.id), 0) AS amount FROM order_list")
+                            + "FROM order_items WHERE order_id = order_list.id), 0) AS amount FROM order_list")
 
     if not order_list:
         order_list = None
@@ -551,7 +551,6 @@ def warehouses():
         db.execute("INSERT INTO warehouses (name, address, status) VALUES (:name, :address, :status)",
                    name=request.form.get("warehouse_name"), address=request.form.get("warehouse_address"),
                    status=request.form.get("warehouse_status"))
-
 
         # User reached route via GET (as by clicking a link or via redirect)
         return redirect("/warehouses")
