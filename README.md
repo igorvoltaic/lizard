@@ -1,6 +1,7 @@
 # Lizard Inventory
 
-This is an Inventory Management Application. It was used as a Final Project for CS50's Introduction to Computer Science
+This is an Inventory Management Application. 
+It was used as a Final Project for CS50's Introduction to Computer Science
 
 
 **Functionality**
@@ -28,4 +29,4 @@ This is an Inventory Management Application. It was used as a Final Project for 
 1. Add more reports 
 
 
-Demo have been deployed to Heroku. If you visit [https://lizard-inventory.herokuapp.com/](https://lizard-inventory.herokuapp.com/) you should see live app!
+Demo have been deployed to Heroku. If you visit [https://lizard-inventory.herokuapp.com/](https://lizard-inventory.herokuapp.com/) you should see the live app!
