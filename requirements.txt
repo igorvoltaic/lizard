@@ -3,5 +3,5 @@ Flask
 Flask-Session
 requests
 gunicorn
-werkzeug==0.15
+werkzeug==0.15.3
 psycopg2
