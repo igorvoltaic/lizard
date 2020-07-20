@@ -1,7 +1,7 @@
 # Lizard Inventory
 
-This is an Inventory Management Application. 
-It was used as a Final Project for CS50's Introduction to Computer Science
+### Inventory Management Application. 
+Built as a Final Project for CS50: Introduction to Computer Science course
 
 
 ### Functionality
