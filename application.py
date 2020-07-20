@@ -42,7 +42,6 @@ def after_request(response):
 app.config["SESSION_FILE_DIR"] = mkdtemp()
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
-app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
 Session(app)
 
 # Configure CS50 Library to use SQLite database
@@ -297,7 +296,7 @@ def edit_inventory():
 
         if not db.execute("SELECT inventory_items.id FROM inventory_items "
                           + "LEFT JOIN inventory_list ON inventory_items.inventory_id = inventory_list.id "
-                          + "WHERE product_id = :product_id AND inventory_id = :inventory_id", 
+                          + "WHERE product_id = :product_id AND inventory_id = :inventory_id",
                           product_id=request.form.get("new_inventory_item"), inventory_id=inventory['id']):
             # Insert new item into DB
             db.execute("INSERT INTO inventory_items (inventory_id, product_id) "
@@ -314,7 +313,7 @@ def edit_inventory():
                           inventory_id=inventory['id'])
 
     # Fetch warehouse name
-    warehouse = db.execute("SELECT name FROM warehouses WHERE id = :warehouse_id", 
+    warehouse = db.execute("SELECT name FROM warehouses WHERE id = :warehouse_id",
                            warehouse_id=inventory['warehouse_id'])[0]['name']
 
     # Fetch order items
