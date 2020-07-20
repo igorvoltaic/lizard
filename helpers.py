@@ -42,22 +42,22 @@ def create_db_tables():
 
     # Create users table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS users ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "username TEXT NOT NULL, hash TEXT NOT NULL)")
 
     # Create products table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS products ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "name TEXT NOT NULL, "
                 + "price FLOAT NOT NULL, "
                 + "description TEXT, "
                 + "unit TEXT NOT NULL, "
-                + "barcode INTEGE RNOT NULL, "
+                + "barcode INTEGER NOT NULL, "
                 + "status INTEGER NOT NULL)")
 
     # Create customers table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS customers ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "name TEXT NOT NULL, "
                 + "address TEXT, "
                 + "tax INTEGER NOT NULL, "
@@ -65,7 +65,7 @@ def create_db_tables():
 
     # Create suppliers table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS suppliers ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "name TEXT NOT NULL, "
                 + "address TEXT, "
                 + "tax INTEGER NOT NULL, "
@@ -73,14 +73,14 @@ def create_db_tables():
 
     # Create warehouses table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS warehouses ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "name TEXT NOT NULL, "
                 + "address TEXT, "
                 + "status INTEGER NOT NULL)")
 
     # Create order_list table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS order_list ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "uuid TEXT NOT NULL UNIQUE, "
                 + "number TEXT NOT NULL, "
                 + "date DATE NOT NULL, "
@@ -91,7 +91,7 @@ def create_db_tables():
 
     # Create order_items table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS order_items ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "order_id INTEGER NOT NULL, "
                 + "qty FLOAT NOT NULL, "
                 + "price FLOAT NOT NULL, "
@@ -99,7 +99,7 @@ def create_db_tables():
 
     # Create inventory_list table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS inventory_list ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "uuid TEXT NOT NULL UNIQUE, "
                 + "date DATE NOT NULL, "
                 + "warehouse_id INTEGER NOT NULL, "
@@ -107,8 +107,9 @@ def create_db_tables():
 
     # Create warehouse_items table if not exists
     db.execute("CREATE TABLE IF NOT EXISTS inventory_items ("
-                + "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                + "id SERIAL PRIMARY KEY NOT NULL, "
                 + "inventory_id INTEGER NOT NULL, "
                 + "qty FLOAT, "
                 + "product_id INTEGER NOT NULL)")
 
+    db.execute("COMMIT")

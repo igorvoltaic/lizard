@@ -42,12 +42,11 @@ def after_request(response):
 app.config["SESSION_FILE_DIR"] = mkdtemp()
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
+app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
 Session(app)
 
 # Configure CS50 Library to use SQLite database
 db = SQL(os.environ['DATABASE_URL'])
-# Create database schema
-create_db_tables()
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -90,10 +89,12 @@ def index():
                    order_type=request.form.get("order_type"), from_id=request.form.get("from_id"),
                    to_id=request.form.get("to_id"))
 
+        db.execute("COMMIT")
+
         # user reached route via get (as by clicking a link or via redirect)
         return redirect("/edit_order?order_uuid=" + uuid)
 
-    order_list = db.execute("SELECT id, number, uuid, date, type, status, IFNULL((SELECT SUM(qty * price) "
+    order_list = db.execute("SELECT id, number, uuid, date, type, status, COALESCE((SELECT SUM(qty * price) "
                             + "FROM order_items WHERE order_id = order_list.id), 0) AS amount FROM order_list")
 
     if not order_list:
@@ -122,6 +123,8 @@ def edit_order():
             db.execute("INSERT INTO order_items (order_id, product_id, qty, price) "
                        + "VALUES (:order_id, :product_id, :qty, :price)",
                        order_id=order['id'], product_id=product_id, qty=qty, price=price)
+
+            db.execute("COMMIT")
 
     # Query database for sender and reciever name and address
     if order['type'] == 1:  # Sell order: WH -> Customer
@@ -159,6 +162,8 @@ def update_order_item():
     db.execute("UPDATE order_items SET qty = :qty WHERE id = :item_id",
                item_id=request.form.get("id"), qty=request.form.get("qty"))
 
+    db.execute("COMMIT")
+
     # fetch uuid to redirect back to the order
     uuid = request.form.get("order_uuid")
 
@@ -173,6 +178,8 @@ def remove_order_item():
 
     db.execute("DELETE FROM order_items WHERE id = :item_id",
                item_id=request.form.get("id"))
+
+    db.execute("COMMIT")
 
     # fetch uuid to redirect back to the order
     uuid = request.form.get("order_uuid")
@@ -190,6 +197,8 @@ def order_status():
 
     db.execute("UPDATE order_list SET status=:status WHERE id=:order_id",
                order_id=request.form.get("id"), status=request.form.get("status"))
+
+    db.execute("COMMIT")
 
     # User reached route via GET (as by clicking a link or via redirect)
     if order_route:
@@ -259,6 +268,8 @@ def inventorize():
                    uuid=uuid, date=request.form.get("date"),
                    warehouse_id=request.form.get("warehouse_id"))
 
+        db.execute("COMMIT")
+
         # user reached route via get (as by clicking a link or via redirect)
         return redirect("/edit_inventory?inventory_uuid=" + uuid)
 
@@ -286,24 +297,29 @@ def edit_inventory():
 
         if not db.execute("SELECT inventory_items.id FROM inventory_items "
                           + "LEFT JOIN inventory_list ON inventory_items.inventory_id = inventory_list.id "
-                          + "WHERE product_id = :product_id AND inventory_id = :inventory_id",
+                          + "WHERE product_id = :product_id AND inventory_id = :inventory_id", 
                           product_id=request.form.get("new_inventory_item"), inventory_id=inventory['id']):
             # Insert new item into DB
             db.execute("INSERT INTO inventory_items (inventory_id, product_id) "
                        + "VALUES (:inventory_id, :product_id)",
                        inventory_id=inventory['id'], product_id=request.form.get("new_inventory_item"))
 
+            db.execute("COMMIT")
+
     # Fetch product list
     products = db.execute("SELECT products.id, name FROM products LEFT JOIN inventory_items ON products.id = inventory_items.product_id "
-                          + "WHERE products.status = 1 AND products.id NOT IN (SELECT product_id FROM inventory_items WHERE inventory_id = :inventory_id)",
+                          + "WHERE products.status = 1 "
+                          + "AND products.id NOT IN (SELECT product_id FROM inventory_items WHERE inventory_id = :inventory_id) "
+                          + "GROUP BY products.id, name",
                           inventory_id=inventory['id'])
 
     # Fetch warehouse name
-    warehouse = db.execute("SELECT name FROM warehouses WHERE id = :warehouse_id",
+    warehouse = db.execute("SELECT name FROM warehouses WHERE id = :warehouse_id", 
                            warehouse_id=inventory['warehouse_id'])[0]['name']
 
     # Fetch order items
-    inventory_items = db.execute("SELECT Z.product_id, ii.id AS inv_id, name, description, IFNULL(SUM(Z.qty),0) AS qty, IFNULL(ii.qty,0) AS inv_qty FROM ("
+    inventory_items = db.execute("SELECT Z.product_id, ii.id AS inv_id, name, description, "
+                                 + "COALESCE(SUM(Z.qty),0) AS qty, COALESCE(ii.qty,0) AS inv_qty FROM ("
                                  + "SELECT product_id, SUM(qty) AS qty FROM inventory_items LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
                                  + "WHERE status = 1 AND warehouse_id = :warehouse_id GROUP BY product_id "
                                  + "UNION "
@@ -317,14 +333,15 @@ def edit_inventory():
                                  + "WHERE status = 1 AND type = 3 AND to_id = :warehouse_id GROUP BY product_id "
                                  + "UNION "
                                  + "SELECT product_id, -(SUM(qty)) AS qty FROM order_items LEFT JOIN order_list ON order_id = order_list.id "
-                                 + "WHERE status = 1 AND type = 3 AND from_id = :warehouse_id GROUP BY product_id"
+                                 + "WHERE status = 1 AND type = 3 AND from_id = :warehouse_id GROUP BY product_id "
                                  + "UNION "
-                                 + "SELECT product_id, SUM(qty) AS qty FROM inventory_items LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
-                                 + "WHERE inventory_id = inventory_id GROUP BY product_id) AS Z "
+                                 + "SELECT product_id, SUM(qty) AS qty FROM inventory_items "
+                                 + "LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
+                                 + "WHERE inventory_id = 1 GROUP BY product_id) AS Z "
                                  + "LEFT JOIN products ON products.id = Z.product_id "
                                  + "LEFT JOIN inventory_items AS ii ON ii.product_id = Z.product_id "
                                  + "WHERE ii.inventory_id = :inventory_id "
-                                 + "GROUP BY Z.product_id",
+                                 + "GROUP BY Z.product_id, ii.id, name, description",
                                  inventory_id=inventory['id'], warehouse_id=inventory['warehouse_id'])
 
     return render_template("edit_inventory.html", inventory=inventory, products=products, inventory_items=inventory_items, warehouse=warehouse)
@@ -339,6 +356,8 @@ def inventory_status():
 
     db.execute("UPDATE inventory_list SET status = :status WHERE id = :inventory_id",
                inventory_id=request.form.get("id"), status=request.form.get("status"))
+
+    db.execute("COMMIT")
 
     # User reached route via GET (as by clicking a link or via redirect)
     if inventory_route:
@@ -360,6 +379,8 @@ def update_inventory_item():
     db.execute("UPDATE inventory_items SET qty = :qty WHERE id = :item_id",
                item_id=request.form.get("id"), qty=qty)
 
+    db.execute("COMMIT")
+
     # fetch uuid to redirect back to the inventory
     uuid = request.form.get("inventory_uuid")
 
@@ -374,6 +395,8 @@ def remove_inventory_item():
 
     db.execute("DELETE FROM inventory_items WHERE id = :item_id",
                item_id=request.form.get("id"))
+
+    db.execute("COMMIT")
 
     # fetch uuid to redirect back to the inventory
     uuid = request.form.get("inventory_uuid")
@@ -403,6 +426,8 @@ def customers():
                    name=request.form.get("name"), address=request.form.get("address"),
                    status=request.form.get("status"), tax=request.form.get("tax"))
 
+        db.execute("COMMIT")
+
         # User reached route via GET (as by clicking a link or via redirect)
         return redirect("/customers")
 
@@ -422,6 +447,8 @@ def edit_customer():
 
     db.execute("UPDATE customers SET status=:status WHERE id=:customer_id",
                customer_id=request.form.get("id"), status=request.form.get("status"))
+
+    db.execute("COMMIT")
 
     # User reached route via GET (as by clicking a link or via redirect)
     return redirect("/customers")
@@ -448,6 +475,8 @@ def suppliers():
                    name=request.form.get("name"), address=request.form.get("address"),
                    status=request.form.get("status"), tax=request.form.get("tax"))
 
+        db.execute("COMMIT")
+
         # User reached route via GET (as by clicking a link or via redirect)
         return redirect("/suppliers")
 
@@ -467,6 +496,8 @@ def edit_supplier():
 
     db.execute("UPDATE suppliers SET status=:status WHERE id=:supplier_id",
                supplier_id=request.form.get("id"), status=request.form.get("status"))
+
+    db.execute("COMMIT")
 
     # User reached route via GET (as by clicking a link or via redirect)
     return redirect("/suppliers")
@@ -497,11 +528,11 @@ def products():
             return apology("must provide unit", 403)
 
         # Insert new warehouse to DB
-        db.execute("INSERT INTO products (name, price, barcode, description, unit, status) "
-                   + "VALUES (:name, :price, :barcode, :description, :unit, :status)",
-                   name=request.form.get("product_name"), price=request.form.get("price"),
-                   unit=request.form.get("unit"), barcode=request.form.get("barcode"),
-                   description=request.form.get("description"), status=request.form.get("status"))
+        db.execute("INSERT INTO products (name, price, barcode, description, unit, status) VALUES (:name, :price, :barcode, :description, :unit, :status)",
+                   name=request.form.get("product_name"), price=request.form.get("price"), unit=request.form.get("unit"),
+                   barcode=request.form.get("barcode"), description=request.form.get("description"), status=request.form.get("status"))
+
+        db.execute("COMMIT")
 
         # User reached route via GET (as by clicking a link or via redirect)
         return redirect("/products")
@@ -531,6 +562,8 @@ def edit_product():
                product_id=request.form.get("id"), price=request.form.get("price"),
                status=request.form.get("status"))
 
+    db.execute("COMMIT")
+
     # User reached route via GET (as by clicking a link or via redirect)
     return redirect("/products")
 
@@ -552,6 +585,8 @@ def warehouses():
                    name=request.form.get("warehouse_name"), address=request.form.get("warehouse_address"),
                    status=request.form.get("warehouse_status"))
 
+        db.execute("COMMIT")
+
         # User reached route via GET (as by clicking a link or via redirect)
         return redirect("/warehouses")
 
@@ -572,6 +607,8 @@ def edit_warehouse():
     db.execute("UPDATE warehouses SET status=:status WHERE id=:warehouse_id",
                warehouse_id=request.form.get("id"), status=request.form.get("status"))
 
+    db.execute("COMMIT")
+
     # User reached route via GET (as by clicking a link or via redirect)
     return redirect("/warehouses")
 
@@ -583,7 +620,7 @@ def current_stock_report():
 
     # Fetch current product stock grouped by warehouses and products
     current_stock = db.execute("SELECT Z.product_id AS p_id, w.name AS w_name, w.address AS w_addr, "
-                               + "p.name AS p_name, p.description AS p_desc, IFNULL(SUM(Z.qty),0) AS qty FROM ("
+                               + "p.name AS p_name, p.description AS p_desc, COALESCE(SUM(Z.qty),0) AS qty FROM ("
                                # add all item quantities from inventories
                                + "SELECT product_id, warehouse_id, SUM(qty) AS qty FROM inventory_items "
                                + "LEFT JOIN inventory_list ON inventory_id = inventory_list.id "
@@ -609,7 +646,8 @@ def current_stock_report():
                                + "LEFT JOIN order_list ON order_id = order_list.id "
                                + "WHERE status = 1 AND type = 3 GROUP BY product_id,warehouse_id) AS Z "
                                + "LEFT JOIN products AS p ON p.id = Z.product_id "
-                               + "LEFT JOIN warehouses AS w on warehouse_id = w.id GROUP BY warehouse_id, Z.product_id")
+                               + "LEFT JOIN warehouses AS w on warehouse_id = w.id "
+                               + "GROUP BY warehouse_id, Z.product_id, w.name, w.address, p.name, p.description")
 
     # User reached route via GET by clicking the link
     return render_template("current_stock_report.html", current_stock=current_stock)
@@ -701,6 +739,8 @@ def register():
         # Insert username and hash to the database
         db.execute("INSERT INTO users (username, hash) VALUES (:username, :hash)",
                    username=request.form.get("username"), hash=hash)
+
+        db.execute("COMMIT")
 
         # Query database for username
         rows = db.execute("SELECT * FROM users WHERE username = :username",
