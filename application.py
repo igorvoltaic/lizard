@@ -14,14 +14,14 @@ import json
 
 from cs50 import SQL
 from uuid import uuid4
-from flask import Flask, flash, jsonify, redirect, render_template, request, session
+from flask import Flask, jsonify, redirect, render_template, request, session
 from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import date
 
-from helpers import apology, login_required, create_db_tables
+from helpers import apology, login_required
 
 # Configure application
 app = Flask(__name__)
