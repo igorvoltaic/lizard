@@ -3,6 +3,6 @@ Flask
 Flask-Session
 requests
 gunicorn
-werkzeug==3.0.1
+werkzeug==3.0.3
 psycopg2-binary
 ruff
